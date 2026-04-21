@@ -163,6 +163,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import service from '../utils/request'
 import {
   Clock, DArrowRight, SwitchButton, MagicStick, Top, Bottom,
   Grid, User, Bell, Document, Setting, DataLine, Message, Folder, WarnTriangleFilled
@@ -236,7 +237,12 @@ const notices = ref([
   { id: 3, title: '恭喜以下同事获得本周最佳员工称号', time: '3天前', type: 'success' }
 ])
 
-const handleLogout = () => {
+const handleLogout = async () => {
+  try {
+    await service.post('/auth/logout')
+  } catch (e) {
+    // 即使接口失败也继续退出
+  }
   localStorage.removeItem('token')
   localStorage.removeItem('user')
   ElMessage.success('已安全退出，期待再次相见！')
