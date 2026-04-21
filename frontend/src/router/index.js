@@ -1,30 +1,37 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import WorkflowList from '../views/WorkflowList.vue'
-import WorkflowCreate from '../views/WorkflowCreate.vue'
-import WorkflowDetail from '../views/WorkflowDetail.vue'
+import Login from '../views/Login.vue'
+import Home from '../views/Home.vue'
 
 const routes = [
   {
+    path: '/login',
+    name: 'Login',
+    component: Login
+  },
+  {
     path: '/',
-    name: 'WorkflowList',
-    component: WorkflowList
-  },
-  {
-    path: '/create',
-    name: 'WorkflowCreate',
-    component: WorkflowCreate
-  },
-  {
-    path: '/workflow/:id',
-    name: 'WorkflowDetail',
-    component: WorkflowDetail,
-    props: true
+    name: 'Home',
+    component: Home,
+    meta: { requiresAuth: true }
   }
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes
+})
+
+// 路由守卫
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('token')
+  
+  if (to.meta.requiresAuth && !token) {
+    next('/login')
+  } else if (to.path === '/login' && token) {
+    next('/')
+  } else {
+    next()
+  }
 })
 
 export default router
