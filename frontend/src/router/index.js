@@ -6,13 +6,14 @@ const routes = [
   {
     path: '/login',
     name: 'Login',
-    component: Login
+    component: Login,
+    meta: { transition: 'login-fade' }
   },
   {
     path: '/',
     name: 'Home',
     component: Home,
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, transition: 'home-fade' }
   }
 ]
 

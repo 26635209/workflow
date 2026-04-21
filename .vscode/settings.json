@@ -1,2 +1,13 @@
 {
+    "java.project.importOnFirstTimeStartup": "automatic",
+    "java.debug.settings.enableDebugNotifications": true,
+    "java.configuration.checkProjectConfiguration": "enabled",
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.configuration.checkProjectConfigurationExclusions": [
+        "**/target/**"
+    ],
+    "java.server.launchMode": "Standard",
+    "java.imports.maven.disableTestClasspathFlag": false,
+    "java.configuration.maven.userSettings": "",
+    "java.open.workspaceSettingsLink": false
 }
