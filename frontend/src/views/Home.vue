@@ -90,12 +90,42 @@
           </div>
           <div class="panel-body">
             <div class="shortcut-grid">
-              <div v-for="shortcut in shortcuts" :key="shortcut.label" class="shortcut-item">
+              <div v-for="shortcut in shortcuts" :key="shortcut.label" class="shortcut-item" @click="handleShortcut(shortcut.action)">
                 <div class="shortcut-icon" :style="{ background: shortcut.bg }">
                   <el-icon :size="20"><component :is="shortcut.icon" /></el-icon>
                 </div>
                 <span>{{ shortcut.label }}</span>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 流程管理面板 -->
+        <div class="panel workflow-panel">
+          <div class="panel-header">
+            <h3>
+              <el-icon><Document /></el-icon>
+              流程管理
+            </h3>
+            <el-button type="primary" size="small" @click="openWorkflowDialog">
+              <el-icon><Plus /></el-icon>
+              添加流程
+            </el-button>
+          </div>
+          <div class="panel-body">
+            <div class="workflow-list">
+              <div v-for="workflow in workflowList" :key="workflow.id" class="workflow-item">
+                <div class="workflow-info">
+                  <span class="workflow-name">{{ workflow.name }}</span>
+                  <span class="workflow-status" :class="workflow.status">{{ getStatusText(workflow.status) }}</span>
+                </div>
+                <div class="workflow-desc">{{ workflow.description || '暂无描述' }}</div>
+                <div class="workflow-meta">
+                  <span class="workflow-priority" :class="'priority-' + workflow.priority">{{ getPriorityText(workflow.priority) }}</span>
+                  <span class="workflow-time">{{ formatTime(workflow.createdAt) }}</span>
+                </div>
+              </div>
+              <el-empty v-if="workflowList.length === 0" description="暂无流程，点击上方按钮添加" />
             </div>
           </div>
         </div>
@@ -155,7 +185,13 @@
           </div>
         </div>
       </div>
+      <!-- 添加流程对话框 -->
     </main>
+    <WorkflowDialog
+      v-model:visible="workflowDialogVisible"
+      :workflow="currentWorkflow"
+      @success="handleWorkflowSuccess"
+    />
   </div>
 </template>
 
@@ -164,9 +200,10 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import service from '../utils/request'
+import WorkflowDialog from './WorkflowDialog.vue'
 import {
   Clock, DArrowRight, SwitchButton, MagicStick, Top, Bottom,
-  Grid, User, Bell, Document, Setting, DataLine, Message, Folder, WarnTriangleFilled
+  Grid, User, Bell, Document, Setting, DataLine, Message, Folder, WarnTriangleFilled, Plus
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -175,6 +212,11 @@ const showTip = ref(false)
 const currentTime = ref('')
 const loginTime = ref('')
 const daysActive = ref(1)
+
+// 流程相关
+const workflowDialogVisible = ref(false)
+const currentWorkflow = ref(null)
+const workflowList = ref([])
 
 let timeInterval = null
 
@@ -198,6 +240,9 @@ onMounted(() => {
   })
 
   document.addEventListener('click', () => { showUserMenu.value = false })
+  
+  // 加载流程列表
+  loadWorkflows()
 })
 
 onUnmounted(() => {
@@ -236,6 +281,62 @@ const notices = ref([
   { id: 2, title: '新版工作流设计器已上线，欢迎体验', time: '1天前', type: 'info' },
   { id: 3, title: '恭喜以下同事获得本周最佳员工称号', time: '3天前', type: 'success' }
 ])
+
+// 加载流程列表
+const loadWorkflows = async () => {
+  try {
+    const res = await service.get('/workflows')
+    workflowList.value = res.data || []
+  } catch (e) {
+    console.error('加载流程失败', e)
+  }
+}
+
+// 打开添加流程对话框
+const openWorkflowDialog = () => {
+  currentWorkflow.value = null
+  workflowDialogVisible.value = true
+}
+
+// 处理流程添加成功
+const handleWorkflowSuccess = async (formData) => {
+  try {
+    await service.post('/workflows', formData)
+    loadWorkflows()
+  } catch (e) {
+    ElMessage.error('添加流程失败')
+  }
+}
+
+// 快捷操作处理
+const handleShortcut = (action) => {
+  if (action === 'addWorkflow') {
+    openWorkflowDialog()
+  }
+}
+
+// 状态文本
+const getStatusText = (status) => {
+  const map = { draft: '草稿', active: '进行中', paused: '已暂停', completed: '已完成' }
+  return map[status] || status
+}
+
+// 优先级文本
+const getPriorityText = (priority) => {
+  const map = { 0: '普通', 1: '重要', 2: '紧急' }
+  return map[priority] || '普通'
+}
+
+// 格式化时间
+const formatTime = (time) => {
+  if (!time) return ''
+  const date = new Date(time)
+  return `${date.getMonth() + 1}-${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+// 更新快捷操作配置
+shortcuts[0].action = 'addWorkflow'
+shortcuts[0].label = '添加流程'
 
 const handleLogout = async () => {
   try {
@@ -776,6 +877,81 @@ const handleLogout = async () => {
   display: flex;
   flex-direction: column;
   gap: 3px;
+}
+
+/* ========== Workflow Panel ========== */
+.workflow-panel .panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.workflow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.workflow-item {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  padding: 14px;
+  transition: all 0.3s;
+}
+
+.workflow-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.workflow-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.workflow-name {
+  font-weight: 600;
+  color: #fff;
+  font-size: 14px;
+}
+
+.workflow-status {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.workflow-status.draft { background: rgba(156, 163, 175, 0.2); color: #9ca3af; }
+.workflow-status.active { background: rgba(74, 222, 128, 0.2); color: #4ade80; }
+.workflow-status.paused { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+.workflow-status.completed { background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
+
+.workflow-desc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.workflow-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+}
+
+.workflow-priority {
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.workflow-priority.priority-0 { background: rgba(156, 163, 175, 0.2); color: #9ca3af; }
+.workflow-priority.priority-1 { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+.workflow-priority.priority-2 { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+.workflow-time {
+  color: rgba(255, 255, 255, 0.3);
 }
 
 .notice-title {
